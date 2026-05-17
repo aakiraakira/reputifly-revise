@@ -958,7 +958,7 @@
                 }
 
                 // Build the link
-                const base = window.location.href.replace(/generator\.html.*$/, '');
+                const base = (window.location.origin + '/');
                 const link = base + '?token=' + token;
 
                 document.getElementById('generatedUrl').value = link;
@@ -1026,7 +1026,7 @@
                 snap.forEach(d => {
                     const r = d.data();
                     const expired = r.expires_at && r.expires_at < Date.now();
-                    const base = window.location.href.replace(/generator\.html.*$/, '');
+                    const base = (window.location.origin + '/');
                     const link = base + '?token=' + r.token;
                     rows.push(`
                     <div class="recent-row" data-token="${r.token}">
@@ -1051,7 +1051,7 @@
         }
 
         window.copyRecentLink = function (token) {
-            const base = window.location.href.replace(/generator\.html.*$/, '');
+            const base = (window.location.origin + '/');
             const link = base + '?token=' + token;
             navigator.clipboard.writeText(link).then(() => toast('Copied!', 'ok'));
         };
