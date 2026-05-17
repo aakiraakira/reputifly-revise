@@ -3179,22 +3179,51 @@
                 // First try a per-page local draft
                 const draftKey = `reputifly_revisionv2_${revisionCurrentToken}_${p.slug}`;
                 let html = null;
-                try { html = await loadFromBigStorage(draftKey); } catch (e) {}
+                try {
+                    // 3s safety timeout: if IDB is wonky (private browsing, recently
+                    // deleted DB still flushing, dbPromise never resolved, etc.) the
+                    // editor MUST NOT hang on "Loading Project..." forever. Fall through
+                    // to localStorage / Firebase Storage fetch instead.
+                    html = await Promise.race([
+                        loadFromBigStorage(draftKey),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('IDB read timeout')), 3000))
+                    ]);
+                } catch (e) {
+                    console.warn('[revision] loadFromBigStorage failed/timed-out for', draftKey, '—', e.message);
+                }
                 if (!html) html = localStorage.getItem(draftKey);
 
-                // Otherwise fetch from Storage
+                // Otherwise fetch from Storage (15s timeout — slow networks shouldn't strand the user)
                 if (!html) {
-                    const res = await fetch(p.download_url);
-                    if (!res.ok) throw new Error("HTTP " + res.status);
-                    html = await res.text();
+                    const ctrl = new AbortController();
+                    const fetchTimer = setTimeout(() => ctrl.abort(), 15000);
+                    try {
+                        const res = await fetch(p.download_url, { signal: ctrl.signal });
+                        if (!res.ok) throw new Error("HTTP " + res.status);
+                        html = await res.text();
+                    } finally {
+                        clearTimeout(fetchTimer);
+                    }
                 }
 
-                // Wait for iframe to actually render the new content before lifting the guard
+                // Wait for iframe to actually render the new content before lifting the guard.
+                // 15s safety net: if iframe.load never fires (a page script hung, network
+                // stalled mid-load), don't keep revisionLoading stuck forever — proceed and
+                // let injectEditorScripts run on the next natural load instead.
                 await new Promise((resolve) => {
                     const frame = document.getElementById('editorFrame');
-                    const onLoad = () => { frame.removeEventListener('load', onLoad); resolve(); };
+                    let settled = false;
+                    const finish = (reason) => {
+                        if (settled) return;
+                        settled = true;
+                        frame.removeEventListener('load', onLoad);
+                        if (reason) console.warn('[revision] iframe-load safety net fired:', reason);
+                        resolve();
+                    };
+                    const onLoad = () => finish(null);
                     frame.addEventListener('load', onLoad);
                     loadContentIntoFrame(html);
+                    setTimeout(() => finish('iframe.load did not fire within 15s'), 15000);
                 });
                 pushHistory(html);
                 renderRevisionPageSwitcher();
