@@ -4406,10 +4406,21 @@
                 const wpUrl = `https://${projectDomain}/wp-content/uploads/${year}/${month}/${baseName}`;
 
                 // 4. UPLOAD TO FIREBASE
+                // Two upload modes:
+                //   - Legacy creator mode: project-assets/{currentProjectId}/{baseName}
+                //   - Revision token mode: revision-edit-images/{token}/{slug}/{baseName}
+                // CRITICAL: in revision-token mode the old code skipped the upload
+                // entirely (currentProjectId was null), leaving displaySrc as a
+                // data: URL. The pack-builder's sentinel system then shipped that
+                // data: URL inside image_upload_plan.json, where the receiving
+                // staff agent's /media/bulk POST cannot retrieve it. Result: every
+                // image swap in revision mode silently failed downstream. Fixed by
+                // also uploading in token mode, mirroring the comment-image flow.
                 let displaySrc = base64String;
+                const revisionMode = !currentProjectId && typeof revisionCurrentToken !== 'undefined' && revisionCurrentToken && storage;
+                const legacyMode = currentProjectId && storage;
 
-                if (currentProjectId && storage) {
-                    // Update Text
+                if (revisionMode || legacyMode) {
                     dropContent.innerHTML = `
                         <div class="flex flex-col items-center justify-center py-4">
                             <div class="loader w-8 h-8 border-blue-500 mb-3"></div>
@@ -4419,11 +4430,21 @@
                     `;
 
                     try {
-                        const storageRef = window.firebaseApp.ref(storage, `project-assets/${currentProjectId}/${baseName}`);
+                        let storagePath;
+                        if (revisionMode) {
+                            const slugSafe = (window.revisionLoadedSlug
+                                || (revisionManifest && revisionManifest.pages[revisionPageIdx]
+                                    && revisionManifest.pages[revisionPageIdx].slug)
+                                || 'page').replace(/[^a-z0-9\-]/gi, '');
+                            storagePath = `revision-edit-images/${revisionCurrentToken}/${slugSafe}/${Date.now().toString(36)}-${baseName}`;
+                        } else {
+                            storagePath = `project-assets/${currentProjectId}/${baseName}`;
+                        }
+                        const storageRef = window.firebaseApp.ref(storage, storagePath);
                         await window.firebaseApp.uploadString(storageRef, base64String, 'data_url');
                         displaySrc = await window.firebaseApp.getDownloadURL(storageRef);
                     } catch (e) {
-                        console.error("Upload failed, falling back to local", e);
+                        console.error("Upload failed, falling back to local data: URL", e);
                     }
                 }
 
