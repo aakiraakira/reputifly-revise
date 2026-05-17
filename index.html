@@ -4210,24 +4210,35 @@
 
             const style = doc.createElement('style');
             style.id = 'reputifly-editor-css'; // FIX: ID Added so we can remove safely later
-            // Visibility override: defeat GSAP / CSS-keyframe entrance animations that
-            // would otherwise leave content blank in the editor (animations don't
-            // re-trigger inside an iframe.srcdoc rehydration).
+            // Editor affordance CSS — kept INTENTIONALLY MINIMAL. We used to globally
+            // force `opacity:1; visibility:visible; transform:none; filter:none;
+            // clip-path:none` on every element to defeat GSAP/keyframe entrance hides.
+            // That approach:
+            //   - Killed `transform: translate(-50%, -50%)` centering → headlines
+            //     collapsed to top-left on Bro Landscape, EMF MAX, etc.
+            //   - Killed `filter: brightness(0.6)` hero dims → white text invisible.
+            //   - Revealed every intentionally-hidden overlay (mobile menus, modals,
+            //     dropdowns, tooltips) that legit pages hide via `opacity:0;
+            //     visibility:hidden`. Every modern site leaked overlay chrome over
+            //     the page content.
             //
-            // Why we DON'T also override transform/filter/clip-path: those are
-            // load-bearing for modern hero layouts (e.g. `transform: translate(-50%,
-            // -50%)` for centering an absolutely-positioned title, `filter: brightness(0.6)`
-            // for darkening a hero background image so white text is legible). Killing
-            // them collapsed hero content to the top-left and made over-bright text
-            // unreadable on sites like Bro Landscape (isolated render mode). The
-            // animation/transition kill alone is enough to skip the entrance — final
-            // styles take over because the keyframe isn't running.
+            // Current approach: only kill `animation`/`transition`. That stops new
+            // animation keyframes from playing (so entrance fade-ins don't loop) but
+            // does NOT override the page's static visibility/opacity rules. Mobile
+            // menus stay hidden, modals stay hidden, popovers stay hidden — and the
+            // hero CSS that uses transform/filter/clip-path for layout works exactly
+            // as authored.
+            //
+            // Edge case to watch for: if a future site relies on JS-set initial
+            // opacity:0 + GSAP animation to reveal content, that content would stay
+            // hidden in the editor. Mitigation if it appears in practice: add a
+            // selective JS pass that, 2s after iframe load, sets inline `opacity:1`
+            // ONLY on elements that are visible (display != none) but transparent
+            // (computed opacity == 0) AND not position:fixed (skip overlays).
             style.textContent = `
                 *, *::before, *::after {
                     animation: none !important;
                     transition: none !important;
-                    opacity: 1 !important;
-                    visibility: visible !important;
                 }
                 img { cursor: pointer !important; position: relative; }
                 img:hover { outline: 3px solid #E6397F !important; z-index: 99999 !important; }
