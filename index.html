@@ -4181,18 +4181,24 @@
 
             const style = doc.createElement('style');
             style.id = 'reputifly-editor-css'; // FIX: ID Added so we can remove safely later
-            // v2: aggressive visibility override - kill all entrance animations / hidden states
-            // so the client always sees the final rendered state. The narrower opacity check
-            // in the old editor missed GSAP/CSS-keyframe based entrances which left content blank.
+            // Visibility override: defeat GSAP / CSS-keyframe entrance animations that
+            // would otherwise leave content blank in the editor (animations don't
+            // re-trigger inside an iframe.srcdoc rehydration).
+            //
+            // Why we DON'T also override transform/filter/clip-path: those are
+            // load-bearing for modern hero layouts (e.g. `transform: translate(-50%,
+            // -50%)` for centering an absolutely-positioned title, `filter: brightness(0.6)`
+            // for darkening a hero background image so white text is legible). Killing
+            // them collapsed hero content to the top-left and made over-bright text
+            // unreadable on sites like Bro Landscape (isolated render mode). The
+            // animation/transition kill alone is enough to skip the entrance — final
+            // styles take over because the keyframe isn't running.
             style.textContent = `
                 *, *::before, *::after {
                     animation: none !important;
                     transition: none !important;
                     opacity: 1 !important;
                     visibility: visible !important;
-                    transform: none !important;
-                    clip-path: none !important;
-                    filter: none !important;
                 }
                 img { cursor: pointer !important; position: relative; }
                 img:hover { outline: 3px solid #E6397F !important; z-index: 99999 !important; }
