@@ -2761,20 +2761,133 @@
             }
 
             // v2: no token in URL = invalid entry; this editor is purely for revision links.
-            // Show a branded notice overlay so the page never lands blank (replaces the
-            // earlier showInvalidLinkScreen() call which was never actually defined).
+            // Show a Reputifly-branded notice so the page never lands blank. Styling
+            // mirrors reputifly.com exactly (per /reputifly-styles skill): #0B0A14
+            // background with 40px grid pattern, ambient pink/orange glow orbs,
+            // liquid-glass card, Inter typography with tight tracking, official logo
+            // (brightness-125), and a single liquid-glow pill CTA to /admin.
             if (!revisionToken) {
                 const setupEl = document.getElementById('setupScreen');
                 if (setupEl) setupEl.classList.remove('active');
+                document.documentElement.style.background = '#0B0A14';
+                document.body.style.background = '#0B0A14';
                 document.body.insertAdjacentHTML('beforeend', `
-                    <div id="rfly-no-token-notice" style="position:fixed;inset:0;z-index:9999;background:radial-gradient(circle at 50% 0%, #160D1E 0%, #05050A 70%);display:flex;align-items:center;justify-content:center;padding:24px;font-family:'Inter',sans-serif;color:#F0F0F0;">
-                        <div style="max-width:480px;width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border-radius:24px;padding:48px 36px;text-align:center;box-shadow:0 30px 80px rgba(0,0,0,0.5);">
-                            <div style="font-family:'Space Grotesk','Inter',sans-serif;font-weight:700;font-size:22px;background:linear-gradient(135deg,#FF2E92 0%,#FF9F1C 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-0.02em;margin-bottom:32px;">reputifly</div>
-                            <h1 style="font-family:'Space Grotesk','Inter',sans-serif;font-weight:600;font-size:28px;margin:0 0 16px 0;color:#fff;letter-spacing:-0.02em;">Client revision portal</h1>
-                            <p style="font-size:15px;line-height:1.6;color:rgba(255,255,255,0.6);margin:0 0 36px 0;">This page is only accessible via a personalised revision link. If you're a client, please open the link your account manager sent you. If you're a Reputifly staff member, head to the admin dashboard.</p>
-                            <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-                                <a href="/admin" style="display:inline-flex;align-items:center;padding:14px 24px;background:linear-gradient(135deg,#FF2E92 0%,#FF9F1C 100%);color:#fff;font-size:14px;font-weight:600;border-radius:12px;text-decoration:none;box-shadow:0 10px 30px rgba(255,46,146,0.3);transition:transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">Staff admin</a>
-                                <a href="https://reputifly.cloud" style="display:inline-flex;align-items:center;padding:14px 24px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.85);font-size:14px;font-weight:600;border-radius:12px;text-decoration:none;transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">About Reputifly</a>
+                    <style>
+                        #rfly-no-token-notice {
+                            position: fixed; inset: 0; z-index: 9999;
+                            background-color: #0B0A14;
+                            background-image:
+                                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+                            background-size: 40px 40px;
+                            color: #F0F0F0;
+                            font-family: 'Inter', sans-serif;
+                            display: flex; align-items: center; justify-content: center;
+                            padding: 24px;
+                            overflow: hidden;
+                        }
+                        #rfly-no-token-notice .ambient-orb {
+                            position: fixed; width: 600px; height: 600px;
+                            border-radius: 50%; filter: blur(100px);
+                            z-index: 0; pointer-events: none;
+                        }
+                        #rfly-no-token-notice .glow-top {
+                            top: -200px; left: 50%; transform: translateX(-50%);
+                            background: radial-gradient(circle, rgba(230,57,127,0.15) 0%, transparent 70%);
+                        }
+                        #rfly-no-token-notice .glow-bottom {
+                            bottom: -200px; right: -100px;
+                            background: radial-gradient(circle, rgba(255,138,0,0.10) 0%, transparent 70%);
+                        }
+                        #rfly-no-token-notice .liquid-card {
+                            position: relative; z-index: 10;
+                            max-width: 500px; width: 100%;
+                            background: rgba(13, 13, 18, 0.75);
+                            -webkit-backdrop-filter: blur(40px) saturate(140%);
+                            backdrop-filter: blur(40px) saturate(140%);
+                            border: 1px solid rgba(255,255,255,0.08);
+                            border-radius: 24px;
+                            box-shadow:
+                                0 40px 80px -12px rgba(0,0,0,0.8),
+                                inset 0 1px 0 0 rgba(255,255,255,0.15),
+                                inset 0 0 40px rgba(0,0,0,0.3);
+                            padding: 56px 44px;
+                            text-align: center;
+                            overflow: hidden;
+                        }
+                        #rfly-no-token-notice .liquid-card::before {
+                            content: ''; position: absolute; top: 0; left: 0;
+                            width: 100%; height: 100%;
+                            background: radial-gradient(circle at top left, rgba(255,255,255,0.05), transparent 70%);
+                            pointer-events: none;
+                        }
+                        #rfly-no-token-notice .card-inner { position: relative; z-index: 1; }
+                        #rfly-no-token-notice .rfly-logo {
+                            height: 32px; width: auto;
+                            margin: 0 auto 32px;
+                            display: block;
+                            filter: brightness(1.25);
+                        }
+                        #rfly-no-token-notice h1 {
+                            font-family: 'Inter', sans-serif;
+                            font-weight: 800;
+                            font-size: 32px;
+                            letter-spacing: -0.03em;
+                            line-height: 1.15;
+                            color: #fff;
+                            margin: 0 0 16px 0;
+                        }
+                        #rfly-no-token-notice h1 .shimmer {
+                            background: linear-gradient(to right, #E6397F, #FF8A00, #E6397F);
+                            background-size: 200% auto;
+                            -webkit-background-clip: text; background-clip: text;
+                            -webkit-text-fill-color: transparent;
+                            animation: rfly-shimmer 4s linear infinite;
+                            font-weight: 800;
+                        }
+                        @keyframes rfly-shimmer { to { background-position: 200% center; } }
+                        #rfly-no-token-notice p {
+                            font-family: 'Inter', sans-serif;
+                            font-size: 15px;
+                            line-height: 1.6;
+                            color: rgba(255,255,255,0.6);
+                            margin: 0 0 40px 0;
+                        }
+                        #rfly-no-token-notice .liquid-glow {
+                            display: inline-flex; align-items: center; gap: 8px;
+                            background:
+                                radial-gradient(circle at top, rgba(255,255,255,0.4) 0%, transparent 60%),
+                                linear-gradient(90deg, #E6397F, #FF8A00);
+                            box-shadow:
+                                0 6px 20px rgba(230,57,127,0.4),
+                                inset 0 1px 0 rgba(255,255,255,0.4);
+                            border: none; border-radius: 9999px;
+                            color: white; font-weight: 700;
+                            font-family: 'Inter', sans-serif; font-size: 14px;
+                            padding: 14px 32px;
+                            text-decoration: none;
+                            transition: all 0.3s ease;
+                        }
+                        #rfly-no-token-notice .liquid-glow:hover {
+                            transform: translateY(-2px) scale(1.02);
+                            box-shadow: 0 15px 30px rgba(255,138,0,0.4);
+                        }
+                        #rfly-no-token-notice .liquid-glow svg {
+                            width: 16px; height: 16px;
+                        }
+                    </style>
+                    <div id="rfly-no-token-notice">
+                        <div class="ambient-orb glow-top"></div>
+                        <div class="ambient-orb glow-bottom"></div>
+                        <div class="liquid-card">
+                            <div class="card-inner">
+                                <img class="rfly-logo" src="https://reputifly.com/wp-content/uploads/2025/05/cropped-reputifly-new-e1746390492876.png" alt="Reputifly">
+                                <h1>Client <span class="shimmer">revision</span> portal</h1>
+                                <p>This page is only accessible via a personalised revision link. If you're a client, please open the link your account manager sent you.</p>
+                                <a href="/admin" class="liquid-glow">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16l7-3 7 3z"></path></svg>
+                                    <span>Open staff admin</span>
+                                </a>
                             </div>
                         </div>
                     </div>`);
