@@ -5164,7 +5164,28 @@
             setTimeout(() => {
                 positionOverlay();
                 overlay.classList.add('show');
-                setTimeout(() => overlay.classList.remove('show'), 3000);
+                let autoHideTimer = setTimeout(hideOverlay, 3000);
+
+                // Polish: hide the overlay on FIRST scroll (parent or iframe). The
+                // overlay was previously a position-fixed pink box that stayed put
+                // while content scrolled underneath, creating a "pink line that
+                // disappears weirdly" effect. Dismissing it on scroll is cleaner
+                // than trying to chase the section's position with rAF (cheap, no
+                // perf cost on scroll-heavy long pages).
+                function hideOverlay() {
+                    overlay.classList.remove('show');
+                    clearTimeout(autoHideTimer);
+                    window.removeEventListener('scroll', hideOverlay, true);
+                    try {
+                        const inner = frame.contentWindow;
+                        if (inner) inner.removeEventListener('scroll', hideOverlay, true);
+                    } catch (e) { /* cross-origin scroll listener — ignore */ }
+                }
+                window.addEventListener('scroll', hideOverlay, { capture: true, passive: true, once: true });
+                try {
+                    const inner = frame.contentWindow;
+                    if (inner) inner.addEventListener('scroll', hideOverlay, { capture: true, passive: true, once: true });
+                } catch (e) { /* same-origin only — ignore for safety */ }
             }, 500);
         }
 
