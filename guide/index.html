@@ -1,0 +1,1049 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Reputifly · Revision Portal Guide</title>
+    <link rel="icon" type="image/jpeg" href="https://reputifly.com/wp-content/uploads/2026/01/IMG_2123.jpg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        /* ============================================================
+           BRAND TOKENS — verbatim from /reputifly-styles
+           ============================================================ */
+        :root {
+            --bg-main: #0B0A14;
+            --accent-primary: #E6397F;
+            --accent-secondary: #FF8A00;
+            --text: #F0F0F0;
+            --muted: rgba(255, 255, 255, 0.62);
+            --muted-2: rgba(255, 255, 255, 0.42);
+            --line: rgba(255, 255, 255, 0.08);
+            --line-strong: rgba(255, 255, 255, 0.14);
+            --card-bg: rgba(255, 255, 255, 0.03);
+        }
+
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; }
+        body {
+            background-color: var(--bg-main);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            line-height: 1.55;
+        }
+
+        /* Ambient warmth */
+        .glow {
+            position: fixed;
+            width: 600px; height: 600px;
+            border-radius: 50%;
+            filter: blur(100px);
+            z-index: -1;
+            pointer-events: none;
+        }
+        .glow-top    { top: -260px; left: 50%; transform: translateX(-50%); background: radial-gradient(circle, rgba(230, 57, 127, 0.15) 0%, transparent 70%); }
+        .glow-bottom { bottom: -260px; right: -100px; background: radial-gradient(circle, rgba(255, 138, 0, 0.10) 0%, transparent 70%); }
+
+        /* ============================================================
+           LAYOUT
+           ============================================================ */
+        .wrap {
+            max-width: 880px;
+            margin: 0 auto;
+            padding: 56px 32px 80px;
+        }
+        @media (max-width: 640px) {
+            .wrap { padding: 28px 18px 48px; }
+        }
+
+        /* ============================================================
+           NAV
+           ============================================================ */
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 36px;
+            gap: 16px;
+        }
+        .nav-logo { height: 22px; width: auto; filter: brightness(1.25); }
+        .nav-meta {
+            font-size: 11px;
+            color: var(--muted-2);
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        /* ============================================================
+           HERO
+           ============================================================ */
+        .hero { margin-bottom: 48px; }
+        .eyebrow {
+            display: inline-block;
+            font-size: 11px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: var(--accent-primary);
+            margin-bottom: 14px;
+        }
+        h1 {
+            font-family: 'Inter', sans-serif;
+            font-weight: 800;
+            font-size: clamp(32px, 5vw, 50px);
+            line-height: 1.05;
+            letter-spacing: -0.035em;
+            margin: 0 0 18px 0;
+            color: #fff;
+        }
+        h1 .shimmer {
+            background: linear-gradient(to right, #E6397F, #FF8A00, #E6397F);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shimmer 4s linear infinite;
+        }
+        @keyframes shimmer { to { background-position: 200% center; } }
+        .hero-sub {
+            font-size: 16px;
+            color: var(--muted);
+            max-width: 620px;
+            margin: 0;
+            line-height: 1.55;
+        }
+        @media (max-width: 640px) { .hero-sub { font-size: 14.5px; } }
+
+        /* ============================================================
+           NUMBERED CARDS
+           ============================================================ */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin: 28px 0 0;
+        }
+        @media (max-width: 720px) { .grid-2 { grid-template-columns: 1fr; } }
+
+        .step-card {
+            background: var(--card-bg);
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: 20px 22px;
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+            transition: border-color 0.2s ease, transform 0.2s ease;
+        }
+        .step-card:hover {
+            border-color: rgba(230, 57, 127, 0.35);
+            transform: translateY(-2px);
+        }
+        .step-num {
+            flex-shrink: 0;
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #E6397F 0%, #FF8A00 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 14px;
+            color: #fff;
+            box-shadow: 0 6px 16px rgba(230, 57, 127, 0.35);
+            margin-top: 2px;
+        }
+        .step-body { flex: 1; min-width: 0; }
+        .step-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #fff;
+            margin: 0 0 4px 0;
+            letter-spacing: -0.01em;
+            line-height: 1.3;
+        }
+        .step-desc {
+            font-size: 13.5px;
+            color: var(--muted);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        /* ============================================================
+           SECTION
+           ============================================================ */
+        .section {
+            margin: 56px 0 0;
+            padding-top: 48px;
+            border-top: 1px solid var(--line);
+        }
+        .section-eyebrow {
+            font-size: 11px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: var(--accent-primary);
+            margin-bottom: 12px;
+        }
+        h2 {
+            font-family: 'Inter', sans-serif;
+            font-weight: 800;
+            font-size: clamp(26px, 3.6vw, 32px);
+            line-height: 1.1;
+            letter-spacing: -0.03em;
+            margin: 0 0 12px 0;
+            color: #fff;
+        }
+        .section-lead {
+            font-size: 15px;
+            color: var(--muted);
+            max-width: 620px;
+            margin: 0 0 28px 0;
+            line-height: 1.55;
+        }
+        .section-lead em {
+            color: #fff;
+            font-style: normal;
+            font-weight: 600;
+        }
+
+        /* ============================================================
+           ACTION ROW — short instruction cards
+           ============================================================ */
+        .actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 28px;
+        }
+        @media (max-width: 720px) { .actions { grid-template-columns: 1fr; } }
+        .action {
+            background: var(--card-bg);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 18px 20px;
+        }
+        .action-kbd {
+            display: inline-block;
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
+            font-size: 10.5px;
+            letter-spacing: 0.04em;
+            color: #fff;
+            background: rgba(230, 57, 127, 0.18);
+            border: 1px solid rgba(230, 57, 127, 0.35);
+            padding: 4px 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+        .action-title {
+            font-size: 14.5px;
+            font-weight: 700;
+            color: #fff;
+            margin: 0 0 4px;
+            letter-spacing: -0.005em;
+        }
+        .action-desc {
+            font-size: 13px;
+            color: var(--muted);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        /* ============================================================
+           BEFORE / AFTER VISUAL
+           ============================================================ */
+        .ba {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 16px;
+            align-items: stretch;
+            margin: 28px 0 4px;
+        }
+        @media (max-width: 640px) {
+            .ba { grid-template-columns: 1fr; }
+            .ba-arrow { transform: rotate(90deg); margin: 0 auto; }
+        }
+        .ba-card {
+            background: var(--card-bg);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 18px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .ba-card.after {
+            border-color: rgba(230, 57, 127, 0.32);
+            background: rgba(230, 57, 127, 0.04);
+        }
+        .ba-tag {
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--muted-2);
+        }
+        .ba-card.after .ba-tag { color: var(--accent-primary); }
+        .ba-text {
+            font-size: 18px;
+            font-weight: 800;
+            line-height: 1.2;
+            letter-spacing: -0.015em;
+            color: #fff;
+        }
+        .ba-card.before .ba-text {
+            color: var(--muted);
+            text-decoration: line-through;
+            text-decoration-color: rgba(255, 255, 255, 0.22);
+        }
+        .ba-arrow {
+            align-self: center;
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #E6397F 0%, #FF8A00 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            box-shadow: 0 6px 16px rgba(230, 57, 127, 0.4);
+            flex-shrink: 0;
+        }
+        .ba-cap {
+            font-size: 12.5px;
+            color: var(--muted);
+            margin: 8px 2px 0;
+            text-align: center;
+            font-style: italic;
+        }
+        .ba-cap strong { color: #fff; font-style: normal; font-weight: 700; }
+
+        /* ============================================================
+           MOCKUPS — recreated to match the real editor
+           ============================================================ */
+        .mockup-frame {
+            background: #1a1d29;
+            border: 1px solid #2a2e3e;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.55);
+            max-width: 100%;
+        }
+        .mockup-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin: 8px 0 4px;
+        }
+        @media (max-width: 720px) { .mockup-row { grid-template-columns: 1fr; gap: 14px; } }
+        .mockup-cap {
+            font-size: 12.5px;
+            color: var(--muted);
+            margin: 10px 2px 0;
+            text-align: center;
+            font-style: italic;
+        }
+        .mockup-cap strong { color: #fff; font-style: normal; font-weight: 700; }
+
+        /* Modal — Edit Content */
+        .mk-modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .mk-modal-title { font-size: 14.5px; font-weight: 700; color: #fff; letter-spacing: -0.01em; }
+        .mk-modal-x {
+            width: 26px; height: 26px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.65);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .mk-toolbar {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 10px;
+            padding: 6px 12px;
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .mk-toolbar-btn { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; color: rgba(255, 255, 255, 0.75); font-weight: 700; font-size: 12px; }
+        .mk-toolbar-sep { width: 1px; height: 16px; background: rgba(255, 255, 255, 0.1); margin: 0 6px; }
+        .mk-textarea {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 10px;
+            padding: 12px 14px;
+            color: #fff;
+            font-size: 13px;
+            min-height: 52px;
+            margin-bottom: 12px;
+            line-height: 1.5;
+            font-family: 'Inter', sans-serif;
+        }
+        .mk-pill-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 12px;
+            border-radius: 9999px;
+            background:
+                radial-gradient(circle at top, rgba(255, 255, 255, 0.4) 0%, transparent 60%),
+                linear-gradient(90deg, #E6397F, #FF8A00);
+            color: #fff;
+            font-weight: 700;
+            font-size: 13px;
+            border: none;
+            box-shadow: 0 6px 16px rgba(230, 57, 127, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+        }
+
+        /* Modal — Change Image */
+        .mk-dropzone {
+            border: 2px dashed rgba(255, 255, 255, 0.14);
+            border-radius: 14px;
+            padding: 24px 16px;
+            text-align: center;
+            margin-bottom: 12px;
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .mk-dropzone-icon {
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            background: rgba(230, 57, 127, 0.12);
+            border: 1px solid rgba(230, 57, 127, 0.35);
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 10px;
+            color: #E6397F;
+        }
+        .mk-dropzone-title { color: #fff; font-weight: 700; font-size: 13px; margin: 0 0 4px; }
+        .mk-dropzone-sub { color: rgba(255, 255, 255, 0.42); font-size: 10.5px; margin: 0; letter-spacing: 0.04em; }
+        .mk-or { display: flex; align-items: center; gap: 8px; color: rgba(255, 255, 255, 0.32); font-size: 10px; font-weight: 700; letter-spacing: 0.15em; margin: 6px 0 10px; }
+        .mk-or::before, .mk-or::after { content: ""; flex: 1; height: 1px; background: rgba(255, 255, 255, 0.08); }
+        .mk-url-row { display: flex; gap: 10px; align-items: center; }
+        .mk-input {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 10px 14px;
+            color: rgba(255, 255, 255, 0.55);
+            font-size: 12px;
+            font-family: 'Inter', sans-serif;
+        }
+        .mk-apply-btn {
+            padding: 10px 20px;
+            border-radius: 9999px;
+            background:
+                radial-gradient(circle at top, rgba(255, 255, 255, 0.4) 0%, transparent 60%),
+                linear-gradient(90deg, #E6397F, #FF8A00);
+            color: #fff;
+            font-weight: 700;
+            font-size: 12px;
+            border: none;
+            box-shadow: 0 4px 12px rgba(230, 57, 127, 0.4);
+        }
+
+        /* ============================================================
+           COMMENTS POPUP MOCKUP
+           ============================================================ */
+        .mk-popup {
+            background: #1a1d29;
+            border: 1px solid #2a2e3e;
+            border-radius: 16px;
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            height: 300px;
+            overflow: hidden;
+            box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.55);
+        }
+        /* Mobile: stack rail ON TOP of pane (vertical), convert section list to
+           horizontal chips. Rail eating half the width on a 375px screen squished
+           the pane to ~150px making labels wrap awkwardly. */
+        @media (max-width: 640px) {
+            .mk-popup {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr;
+                height: auto;
+                min-height: 320px;
+            }
+        }
+        .mk-rail {
+            background: #13161f;
+            border-right: 1px solid #2a2e3e;
+            padding: 14px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-width: 0;
+        }
+        @media (max-width: 640px) {
+            .mk-rail {
+                border-right: none;
+                border-bottom: 1px solid #2a2e3e;
+                padding: 12px 14px;
+                gap: 8px;
+            }
+        }
+        .mk-rail-head { display: flex; justify-content: space-between; align-items: center; }
+        .mk-rail-title { display: flex; align-items: center; gap: 6px; font-weight: 700; color: #fff; font-size: 13px; }
+        .mk-rail-x {
+            width: 22px; height: 22px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.65);
+            border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .mk-rail-sub { font-size: 10.5px; color: rgba(255, 255, 255, 0.42); margin: -4px 0 4px; }
+        .mk-rail-search {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 9999px;
+            padding: 6px 12px;
+            font-size: 10.5px;
+            color: rgba(255, 255, 255, 0.42);
+        }
+        @media (max-width: 640px) {
+            /* Search field eats vertical space with no value on mobile — hide it.
+               Also hide the subtitle line; the section name in the pane is enough. */
+            .mk-rail-search { display: none; }
+            .mk-rail-sub { display: none; }
+        }
+        .mk-rail-list { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; overflow-y: auto; }
+        @media (max-width: 640px) {
+            .mk-rail-list {
+                flex-direction: row;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                gap: 6px;
+                margin-top: 2px;
+                padding-bottom: 2px;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+            }
+            .mk-rail-list::-webkit-scrollbar { display: none; }
+        }
+        .mk-rail-item {
+            font-size: 11.5px;
+            color: rgba(255, 255, 255, 0.72);
+            padding: 6px 10px;
+            border-radius: 7px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .mk-rail-item.active { background: rgba(230, 57, 127, 0.15); color: #fff; font-weight: 600; }
+        .mk-rail-item::before {
+            content: "";
+            display: inline-block;
+            width: 11px; height: 11px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+        @media (max-width: 640px) {
+            /* Convert column items into horizontal chips (whitespace nowrap + bg) */
+            .mk-rail-item {
+                background: rgba(255, 255, 255, 0.04);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                white-space: nowrap;
+                padding: 6px 12px;
+                border-radius: 9999px;
+                flex-shrink: 0;
+            }
+            .mk-rail-item::before { display: none; }
+            .mk-rail-item.active {
+                background: rgba(230, 57, 127, 0.2);
+                border-color: rgba(230, 57, 127, 0.35);
+            }
+        }
+        .mk-pane {
+            padding: 20px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            min-width: 0;
+        }
+        @media (max-width: 640px) {
+            /* More breathing room on mobile so the textarea doesn't feel boxed-in. */
+            .mk-pane { padding: 18px 18px 20px; gap: 12px; }
+        }
+        .mk-pane-eyebrow {
+            font-size: 9.5px;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.45);
+        }
+        .mk-pane-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #fff;
+            margin: -2px 0 0;
+            line-height: 1.25;
+        }
+        .mk-pane-label {
+            font-size: 9.5px;
+            font-weight: 700;
+            letter-spacing: 0.13em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.45);
+            margin-bottom: 6px;
+        }
+        .mk-pane-textarea {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 10px;
+            padding: 10px 12px;
+            color: rgba(255, 255, 255, 0.88);
+            font-size: 12px;
+            min-height: 46px;
+            font-family: 'Inter', sans-serif;
+            line-height: 1.5;
+        }
+        .mk-pane-image-row { display: flex; gap: 8px; flex-wrap: wrap; }
+        .mk-pane-image {
+            width: 52px; height: 52px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, rgba(230, 57, 127, 0.15), rgba(255, 138, 0, 0.15));
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            display: flex; align-items: center; justify-content: center;
+            color: rgba(255, 255, 255, 0.55);
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+        }
+        .mk-pane-add {
+            width: 52px; height: 52px;
+            border-radius: 8px;
+            border: 1px dashed rgba(255, 255, 255, 0.18);
+            display: flex; align-items: center; justify-content: center;
+            color: rgba(255, 255, 255, 0.42);
+            font-size: 22px;
+            font-weight: 200;
+        }
+
+        /* ============================================================
+           BAD → GOOD COMMENT EXAMPLE
+           ============================================================ */
+        .ex {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin: 20px 0 4px;
+        }
+        @media (max-width: 720px) { .ex { grid-template-columns: 1fr; } }
+        .ex-card {
+            padding: 16px 18px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            background: var(--card-bg);
+        }
+        .ex-bad { border-color: rgba(255, 80, 80, 0.22); background: rgba(255, 80, 80, 0.04); }
+        .ex-good { border-color: rgba(34, 197, 94, 0.28); background: rgba(34, 197, 94, 0.04); }
+        .ex-tag {
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+        .ex-bad .ex-tag  { color: #ff8a8a; }
+        .ex-good .ex-tag { color: #34d399; }
+        .ex-text {
+            font-size: 13.5px;
+            color: rgba(255, 255, 255, 0.88);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        /* ============================================================
+           TIPS
+           ============================================================ */
+        .tips {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            margin-top: 22px;
+        }
+        .tip {
+            background: rgba(230, 57, 127, 0.06);
+            border: 1px solid rgba(230, 57, 127, 0.16);
+            border-radius: 12px;
+            padding: 14px 18px;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+        .tip-bullet {
+            flex-shrink: 0;
+            color: var(--accent-primary);
+            font-weight: 800;
+            font-size: 14px;
+            margin-top: 1px;
+        }
+        .tip-text {
+            font-size: 13.5px;
+            color: var(--muted);
+            margin: 0;
+            line-height: 1.5;
+        }
+        .tip-text strong { color: #fff; font-weight: 700; }
+
+        /* ============================================================
+           FINISH CARD
+           ============================================================ */
+        .finish {
+            margin-top: 44px;
+            background: linear-gradient(135deg, rgba(230, 57, 127, 0.08), rgba(255, 138, 0, 0.04));
+            border: 1px solid rgba(230, 57, 127, 0.22);
+            border-radius: 18px;
+            padding: 24px 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 24px;
+        }
+        @media (max-width: 640px) {
+            .finish { flex-direction: column; align-items: flex-start; gap: 16px; padding: 22px; }
+        }
+        .finish-body { flex: 1; }
+        .finish-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: #fff;
+            margin: 0 0 6px;
+            letter-spacing: -0.01em;
+        }
+        .finish-desc {
+            font-size: 13.5px;
+            color: var(--muted);
+            margin: 0;
+            line-height: 1.5;
+        }
+        .finish-desc strong { color: #fff; font-weight: 700; }
+        .finish-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 13px 22px;
+            border-radius: 9999px;
+            background:
+                radial-gradient(circle at top, rgba(255, 255, 255, 0.4) 0%, transparent 60%),
+                linear-gradient(90deg, #E6397F, #FF8A00);
+            color: #fff;
+            font-weight: 700;
+            font-size: 13px;
+            box-shadow: 0 6px 16px rgba(230, 57, 127, 0.35);
+            flex-shrink: 0;
+            text-decoration: none;
+        }
+
+        /* ============================================================
+           FOOTER
+           ============================================================ */
+        .footer {
+            margin-top: 52px;
+            padding-top: 22px;
+            border-top: 1px solid var(--line);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--muted-2);
+            font-size: 11px;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .footer a { color: rgba(255, 255, 255, 0.55); text-decoration: none; }
+        .footer a:hover { color: var(--accent-primary); }
+
+        /* ============================================================
+           ICONS
+           ============================================================ */
+        .icon {
+            display: inline-block;
+            width: 14px; height: 14px;
+            vertical-align: -3px;
+            stroke-width: 2;
+            stroke: currentColor;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .icon-md { width: 16px; height: 16px; vertical-align: -3.5px; }
+        .icon-sm { width: 12px; height: 12px; vertical-align: -2px; }
+    </style>
+</head>
+<body>
+
+<div class="glow glow-top"></div>
+<div class="glow glow-bottom"></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+        <symbol id="i-msg" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+        <symbol id="i-send" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></symbol>
+        <symbol id="i-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+        <symbol id="i-up" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></symbol>
+        <symbol id="i-arrow" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></symbol>
+        <symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+        <symbol id="i-warn" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+    </defs>
+</svg>
+
+<div class="wrap">
+
+    <nav class="nav">
+        <img class="nav-logo" src="https://reputifly.com/wp-content/uploads/2025/05/cropped-reputifly-new-e1746390492876.png" alt="Reputifly">
+        <span class="nav-meta">Revision Portal · Client Guide</span>
+    </nav>
+
+    <!-- ============================================================
+         HERO
+         ============================================================ -->
+    <header class="hero">
+        <span class="eyebrow">Quick Guide · 1-Minute Read</span>
+        <h1>Send Us <span class="shimmer">Revisions</span><br>Without The Back-And-Forth.</h1>
+        <p class="hero-sub">
+            Your link opens a private editor that looks exactly like your real website.
+            Two ways to give us feedback &mdash; pick either, or mix both.
+        </p>
+
+        <div class="grid-2">
+            <div class="step-card">
+                <span class="step-num">1</span>
+                <div class="step-body">
+                    <h3 class="step-title">Edit Text + Images Directly</h3>
+                    <p class="step-desc">Double-click any text. Click any image to swap it.</p>
+                </div>
+            </div>
+            <div class="step-card">
+                <span class="step-num">2</span>
+                <div class="step-body">
+                    <h3 class="step-title">Comment On Any Section</h3>
+                    <p class="step-desc">Right-click anywhere to leave a note or reference image.</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+
+    <!-- ============================================================
+         PART 1 — DIRECT EDITING
+         ============================================================ -->
+    <section class="section">
+        <div class="section-eyebrow">Part 1 · The Editor</div>
+        <h2>Edit Text And Images Directly</h2>
+        <p class="section-lead">
+            Nothing publishes to your live site until our team reviews it. <em>Edit freely.</em>
+        </p>
+
+        <div class="actions">
+            <div class="action">
+                <span class="action-kbd">Double-Click</span>
+                <h3 class="action-title">Change Any Text</h3>
+                <p class="action-desc">Headings, paragraphs, buttons &mdash; all editable in one dialog.</p>
+            </div>
+            <div class="action">
+                <span class="action-kbd">Click</span>
+                <h3 class="action-title">Swap Any Image</h3>
+                <p class="action-desc">Upload, drag, or paste a URL. Auto-converts to WebP.</p>
+            </div>
+        </div>
+
+        <!-- BEFORE / AFTER VISUAL -->
+        <div class="ba">
+            <div class="ba-card before">
+                <span class="ba-tag">Before</span>
+                <p class="ba-text">Welcome to Bro Landscape</p>
+            </div>
+            <div class="ba-arrow" aria-hidden="true">
+                <svg class="icon icon-md"><use href="#i-arrow"/></svg>
+            </div>
+            <div class="ba-card after">
+                <span class="ba-tag">After Your Edit</span>
+                <p class="ba-text">Singapore's Premier Decking Specialists</p>
+            </div>
+        </div>
+        <p class="ba-cap"><strong>Double-click the headline &rarr; type new text &rarr; click Update.</strong> That's it.</p>
+
+        <div class="mockup-row" style="margin-top:24px;">
+            <!-- Edit Content modal -->
+            <div>
+                <div class="mockup-frame">
+                    <div class="mk-modal-head">
+                        <span class="mk-modal-title">Edit Content</span>
+                        <span class="mk-modal-x"><svg class="icon icon-sm"><use href="#i-x"/></svg></span>
+                    </div>
+                    <div class="mk-toolbar">
+                        <span class="mk-toolbar-btn" style="font-weight:800;">B</span>
+                        <span class="mk-toolbar-btn" style="font-style:italic;">I</span>
+                        <span class="mk-toolbar-btn" style="text-decoration:underline;">U</span>
+                        <span class="mk-toolbar-sep"></span>
+                        <span class="mk-toolbar-btn"><svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span>
+                    </div>
+                    <div class="mk-textarea">Singapore's Premier Decking Specialists</div>
+                    <button class="mk-pill-btn">Update Content</button>
+                </div>
+                <p class="mockup-cap"><strong>Edit Content</strong> &mdash; opens on double-click.</p>
+            </div>
+            <!-- Change Image modal -->
+            <div>
+                <div class="mockup-frame">
+                    <div class="mk-modal-head">
+                        <span class="mk-modal-title">Change Image</span>
+                        <span class="mk-modal-x"><svg class="icon icon-sm"><use href="#i-x"/></svg></span>
+                    </div>
+                    <div class="mk-dropzone">
+                        <div class="mk-dropzone-icon"><svg class="icon icon-md"><use href="#i-up"/></svg></div>
+                        <p class="mk-dropzone-title">Upload, drag, or paste (Ctrl+V)</p>
+                        <p class="mk-dropzone-sub">AUTO-CONVERTS TO WEBP</p>
+                    </div>
+                    <div class="mk-or">Or URL</div>
+                    <div class="mk-url-row">
+                        <span class="mk-input">https://...</span>
+                        <button class="mk-apply-btn">Apply</button>
+                    </div>
+                </div>
+                <p class="mockup-cap"><strong>Change Image</strong> &mdash; opens on click.</p>
+            </div>
+        </div>
+
+        <div class="tips" style="margin-top: 26px;">
+            <div class="tip">
+                <span class="tip-bullet">&rarr;</span>
+                <p class="tip-text"><strong>Auto-saves every few seconds.</strong> Close the tab whenever &mdash; come back with the same link.</p>
+            </div>
+            <div class="tip">
+                <span class="tip-bullet">&rarr;</span>
+                <p class="tip-text"><strong>Switch pages</strong> via the dropdown at the top of the editor.</p>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- ============================================================
+         PART 2 — COMMENTS
+         ============================================================ -->
+    <section class="section">
+        <div class="section-eyebrow">Part 2 · Comments</div>
+        <h2>Comment On Any Section</h2>
+        <p class="section-lead">
+            For anything that isn't a quick edit &mdash; <em>"redesign this hero"</em>,
+            <em>"use lifestyle photos"</em>, or <em>"add a new section here"</em>.
+        </p>
+
+        <div class="actions">
+            <div class="action">
+                <span class="action-kbd">Right-Click</span>
+                <h3 class="action-title">Comment On A Section</h3>
+                <p class="action-desc">Opens comments with that section pre-selected.</p>
+            </div>
+            <div class="action">
+                <span class="action-kbd">Pink Chat Bubble</span>
+                <h3 class="action-title">Open All Comments</h3>
+                <p class="action-desc">Bottom-left of the page. Browse every section.</p>
+            </div>
+        </div>
+
+        <div class="mk-popup">
+            <aside class="mk-rail">
+                <div class="mk-rail-head">
+                    <div class="mk-rail-title">
+                        <svg class="icon" style="color:#E6397F;"><use href="#i-msg"/></svg>
+                        Comments
+                    </div>
+                    <span class="mk-rail-x"><svg class="icon icon-sm"><use href="#i-x"/></svg></span>
+                </div>
+                <div class="mk-rail-sub">Decking</div>
+                <div class="mk-rail-search">Search Sections…</div>
+                <div class="mk-rail-list">
+                    <div class="mk-rail-item active">Hero</div>
+                    <div class="mk-rail-item">Services</div>
+                    <div class="mk-rail-item">Properties</div>
+                    <div class="mk-rail-item">Testimonials</div>
+                    <div class="mk-rail-item">Contact</div>
+                </div>
+            </aside>
+            <div class="mk-pane">
+                <div>
+                    <p class="mk-pane-eyebrow">Decking</p>
+                    <h3 class="mk-pane-title">Hero</h3>
+                </div>
+                <div>
+                    <p class="mk-pane-label">What Should Change Here?</p>
+                    <div class="mk-pane-textarea">Use a warmer hero photo &mdash; something with lifestyle vibes. Reference attached.</div>
+                </div>
+                <div>
+                    <p class="mk-pane-label">Reference Images</p>
+                    <div class="mk-pane-image-row">
+                        <div class="mk-pane-image">REF</div>
+                        <div class="mk-pane-add">+</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <p class="mockup-cap"><strong>Comments Popup</strong> &mdash; sections on the left, your feedback on the right.</p>
+
+        <!-- BAD → GOOD EXAMPLE -->
+        <div class="ex">
+            <div class="ex-card ex-bad">
+                <div class="ex-tag"><svg class="icon icon-sm"><use href="#i-warn"/></svg> Avoid</div>
+                <p class="ex-text">"Make this section pop more."</p>
+            </div>
+            <div class="ex-card ex-good">
+                <div class="ex-tag"><svg class="icon icon-sm"><use href="#i-check"/></svg> Try Instead</div>
+                <p class="ex-text">"Change headline to 'Singapore's Premier Decking', use a warmer hero photo &mdash; vibe like greenhouse.com."</p>
+            </div>
+        </div>
+        <p class="ba-cap"><strong>Specific &rarr; faster + more accurate.</strong></p>
+
+        <div class="tips" style="margin-top: 22px;">
+            <div class="tip">
+                <span class="tip-bullet">&rarr;</span>
+                <p class="tip-text"><strong>Drag-drop reference images into a comment.</strong> Visuals speak louder than words.</p>
+            </div>
+            <div class="tip">
+                <span class="tip-bullet">&rarr;</span>
+                <p class="tip-text"><strong>Mix direct edits with comments freely.</strong> Both ship in the same pack.</p>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- ============================================================
+         FINISH
+         ============================================================ -->
+    <div class="finish">
+        <div class="finish-body">
+            <p class="finish-title">When You're Done</p>
+            <p class="finish-desc">Click <strong>Notify Completion</strong> top-right of the editor. We take it from there.</p>
+        </div>
+        <a class="finish-cta" href="#">
+            <svg class="icon icon-md"><use href="#i-send"/></svg>
+            Notify Completion
+        </a>
+    </div>
+
+    <footer class="footer">
+        <span>Reputifly Pte Ltd · UEN 202531855M · <a href="mailto:hello@reputifly.com">hello@reputifly.com</a></span>
+        <span>Updated May 2026</span>
+    </footer>
+
+</div>
+
+</body>
+</html>
