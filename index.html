@@ -2387,12 +2387,18 @@
 
             <!-- LEFT RAIL: sections sidebar -->
             <aside class="cp-rail" id="cpRail">
-                <div class="cp-rail-header">
+                <div class="cp-rail-header" style="position:relative;">
                     <div class="cp-rail-title">
                         <i data-feather="message-circle" class="w-4 h-4" style="color:#E6397F;"></i>
                         <span>Comments</span>
                     </div>
                     <div class="cp-rail-page" id="cpRailPage">Pick a section</div>
+                    <!-- Always-visible close button so the popup is never a trap on the empty state.
+                         The original .cp-close at line ~2437 lives inside #cpPaneContent which is
+                         display:none until a section is picked — mouse-only clients had no exit. -->
+                    <button type="button" class="cp-close" onclick="closeCommentsPopup()" aria-label="Close comments" title="Close (Esc)" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#bbb;width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.12)';this.style.color='#fff';" onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.color='#bbb';">
+                        <i data-feather="x" class="w-4 h-4"></i>
+                    </button>
                 </div>
                 <div class="cp-rail-search">
                     <div class="cp-rail-search-wrap">
@@ -3363,11 +3369,15 @@
             const btn = document.getElementById('notifyOption');
 
             // --- ANTI-SPAM: BLOCK DOUBLE CLICKS ---
+            // Also block re-submission after success: once a pack has shipped, the button
+            // stays in "Sent ✓" state. Errors re-enable normally so the client can retry.
             if (btn.dataset.loading === "true") return;
+            if (btn.dataset.sent === "true") return;
             btn.dataset.loading = "true";
             btn.style.opacity = "0.5";
             btn.style.pointerEvents = "none";
             // -------------------------------------
+            let notifySentSuccessfully = false;
 
             // --- FIX: ADAPTIVE UI LOADER ---
             // Checks if we are in "Dropdown Mode" (Admin) or "Button Mode" (Client)
@@ -3496,6 +3506,7 @@
                     } catch (e) { console.warn('pending_revisions write failed', e); }
 
                     if (emailResult && emailResult.success) {
+                        notifySentSuccessfully = true;
                         openModal('notifySuccessModal');
                     } else {
                         // Email failed but pack uploaded — still surface success since the pack is recoverable from Firestore
@@ -3567,16 +3578,31 @@
                 openModal('notifyErrorModal');
             } finally {
                 // --- RESTORE BUTTON ---
-                if (iconBox) {
-                    iconBox.innerHTML = originalContent;
+                if (notifySentSuccessfully) {
+                    // Lock the button in a "Sent" state so the client can't accidentally
+                    // resubmit after dismissing the success modal. The dataset.sent flag
+                    // also blocks re-entry at function top.
+                    if (iconBox) {
+                        iconBox.innerHTML = '<i data-feather="check" class="w-4 h-4 text-green-300"></i>';
+                    } else {
+                        btn.innerHTML = '<i data-feather="check" class="w-4 h-4"></i> <span class="font-bold ml-2">Sent</span>';
+                    }
+                    btn.dataset.sent = "true";
+                    btn.dataset.loading = "false";
+                    btn.style.opacity = "0.75";
+                    btn.style.pointerEvents = "none";
                 } else {
-                    btn.innerHTML = originalContent;
+                    // Error or aborted — restore original label so client can retry
+                    if (iconBox) {
+                        iconBox.innerHTML = originalContent;
+                    } else {
+                        btn.innerHTML = originalContent;
+                    }
+                    btn.dataset.loading = "false";
+                    btn.style.opacity = "1";
+                    btn.style.pointerEvents = "auto";
                 }
                 feather.replace();
-
-                btn.dataset.loading = "false";
-                btn.style.opacity = "1";
-                btn.style.pointerEvents = "auto";
             }
         }
         function updateSharingMenu() {
@@ -4180,6 +4206,34 @@
 
         function loadContentIntoFrame(htmlContent) {
             const frame = document.getElementById('editorFrame');
+            // Inject <base href> so relative URLs inside the page resolve correctly.
+            // Without this, iframe.srcdoc uses about:srcdoc as the document origin
+            // and any <img src="/wp-content/...">, background-image: url(/foo),
+            // <source srcset="/img/..."> etc. silently 404. Bro Landscape worked
+            // because RSPD's deployment_rendered emits absolute URLs; other sites
+            // or older plugin versions may not. Idempotent against pages that
+            // already have a <base> tag.
+            try {
+                const baseOrigin = (function () {
+                    if (typeof revisionManifest !== 'undefined'
+                        && revisionManifest
+                        && typeof revisionPageIdx !== 'undefined'
+                        && revisionManifest.pages
+                        && revisionManifest.pages[revisionPageIdx]
+                        && revisionManifest.pages[revisionPageIdx].url) {
+                        return new URL(revisionManifest.pages[revisionPageIdx].url).origin;
+                    }
+                    if (typeof projectDomain !== 'undefined' && projectDomain) {
+                        return 'https://' + String(projectDomain).replace(/^https?:\/\//, '').replace(/\/$/, '');
+                    }
+                    return null;
+                })();
+                if (baseOrigin && !/<base\s+[^>]*href=/i.test(htmlContent)) {
+                    htmlContent = htmlContent.replace(/<head([^>]*)>/i, function (m, attrs) {
+                        return '<head' + attrs + '>\n<base href="' + baseOrigin + '/">';
+                    });
+                }
+            } catch (e) { /* base-injection is best-effort; don't block rendering */ }
             frame.srcdoc = htmlContent;
             frame.onload = () => {
                 document.getElementById('empty-state').style.display = 'none';
@@ -4444,7 +4498,13 @@
                         await window.firebaseApp.uploadString(storageRef, base64String, 'data_url');
                         displaySrc = await window.firebaseApp.getDownloadURL(storageRef);
                     } catch (e) {
+                        // Surface the failure — the catch used to be silent (console only),
+                        // which meant the client saw the image swap "work" via the data: URL
+                        // fallback but the pack would ship a data: URL the receiving agent
+                        // can't bulk-upload. Strong alert prompts retry; if the user dismisses
+                        // it, the swap still appears locally so their editing session isn't lost.
                         console.error("Upload failed, falling back to local data: URL", e);
+                        alert("⚠ Image upload to cloud failed.\n\nYour swap is showing locally but will NOT reach the team if you submit now. Please close this dialog and click the image again to retry the upload.");
                     }
                 }
 
@@ -4966,6 +5026,19 @@
         window.openCommentsSidebar = () => openCommentsPopup(null);
         window.closeCommentsSidebar = closeCommentsPopup;
         window.closeCommentPopup = closeCommentsPopup;
+
+        // Backdrop click → close popup when nothing is dirty. e.target === popup
+        // means the click landed on the wrapper itself, not on any child element.
+        // Belt-and-braces with the new rail-header X button — either works.
+        (function attachCommentPopupBackdropClose() {
+            const popup = document.getElementById('commentPopup');
+            if (!popup) return;
+            popup.addEventListener('click', (e) => {
+                if (e.target !== popup) return;
+                if (cpDirty) return; // existing dirty-state confirm flow runs in closeCommentsPopup() if user explicitly closes
+                closeCommentsPopup();
+            });
+        })();
 
         // ---------- RAIL RENDERING ----------
         function renderCpRail() {
