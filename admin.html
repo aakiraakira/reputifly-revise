@@ -845,8 +845,22 @@
             }
         }
 
+        // Find a page's deployable HTML file across the multiple naming conventions
+        // we've observed in the wild:
+        //   - older RSPD: deployment file is named after the slug ("home.html", "about.html")
+        //   - newer RSPD: deployment file is always "source.html" (per page entry)
+        //   - if neither, fall back to the page's declared entry_file, then any *.html
+        // Returns the source file object (or null) so callers can read both .size and .content.
+        function findPageHtmlFile(page) {
+            const files = (page.source && page.source.files) || [];
+            return files.find(f => f.path === page.slug + '.html')
+                || (page.entry_file && files.find(f => f.path === page.entry_file))
+                || files.find(f => f.path === 'source.html')
+                || files.find(f => (f.path || '').toLowerCase().endsWith('.html'))
+                || null;
+        }
         function pageSize(page) {
-            const f = (page.source && page.source.files || []).find(f => f.path === page.slug + '.html');
+            const f = findPageHtmlFile(page);
             return f ? f.size : 0;
         }
         function fmtBytes(n) { return n < 1024 ? n + 'B' : (n/1024).toFixed(1) + 'KB'; }
@@ -934,18 +948,52 @@
                 const token = randomToken(12);
                 const pickedPages = allPages.filter(p => selectedIds.has(p.page_id));
 
-                // Upload each page's source HTML to Storage
+                // Upload each page's source HTML to Storage. Uses cascading
+                // lookup (findPageHtmlFile) so this works across every RSPD plugin
+                // version: older sites name the HTML after the slug, newer sites
+                // name it source.html. If the file lookup fails we ALSO try a
+                // last-resort live fetch via deployment_rendered (universal across
+                // every observed version). Pages that still have no usable HTML
+                // get collected in skippedPages so we can show a clear error
+                // instead of silently writing an empty manifest.
                 const manifestPages = [];
+                const skippedPages = [];
                 let i = 0;
                 for (const p of pickedPages) {
                     i++;
                     btn.innerHTML = `<div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Uploading page ${i}/${pickedPages.length}...`;
                     status.innerText = `Uploading ${p.slug}.html...`;
 
-                    const f = (p.source && p.source.files || []).find(f => f.path === p.slug + '.html');
-                    const html = f ? f.content : '';
+                    const f = findPageHtmlFile(p);
+                    let html = f ? f.content : '';
+
+                    // Last resort: live-fetch via deployment_rendered if the
+                    // source.files[] lookup missed everything (sites where the
+                    // plugin returns metadata but no inline file content).
+                    if (!html && p.page_id) {
+                        try {
+                            status.innerText = `Falling back to deployment_rendered for ${p.slug}...`;
+                            const drUrl = profile.api_base + '/deployments/' + p.page_id + '/rendered-html';
+                            const dr = await fetch(drUrl, {
+                                headers: { 'Authorization': 'Bearer ' + profile.authentication.agent_key, 'Accept': 'application/json' }
+                            });
+                            if (dr.ok) {
+                                const ct = dr.headers.get('content-type') || '';
+                                if (ct.includes('application/json')) {
+                                    const j = await dr.json();
+                                    html = j.html || j.rendered_html || j.content || '';
+                                } else {
+                                    html = await dr.text();
+                                }
+                            }
+                        } catch (drErr) {
+                            console.warn('deployment_rendered fallback failed for', p.slug, drErr);
+                        }
+                    }
+
                     if (!html) {
-                        status.innerText = `Skipping ${p.slug} — empty content`;
+                        skippedPages.push(p.slug);
+                        status.innerText = `Skipped ${p.slug} — no HTML available`;
                         continue;
                     }
 
@@ -963,6 +1011,26 @@
                         download_url: downloadUrl,
                         size: html.length
                     });
+                }
+
+                // Safety net: refuse to write an empty manifest. The old code
+                // silently wrote `pages: []` if every iteration hit `continue`,
+                // shipping a broken link that put the client into a Firestore
+                // retry loop. Now we abort with a clear error and tell the user
+                // exactly which pages failed.
+                if (manifestPages.length === 0) {
+                    throw new Error('No pages exported. ' + (skippedPages.length
+                        ? 'All ' + skippedPages.length + ' selected pages had no usable HTML (' + skippedPages.join(', ') + '). The plugin may not expose deployment content for this site — verify in Reputifly admin.'
+                        : 'Pages list was empty.'));
+                }
+                if (skippedPages.length > 0) {
+                    // Allow shipping the partial link so the client still gets
+                    // SOMETHING, but warn the operator up-front so they can
+                    // decide whether to regenerate.
+                    const skippedSummary = skippedPages.length + ' page(s) skipped (no HTML available): ' + skippedPages.join(', ') + '\n\nThe link will only include the ' + manifestPages.length + ' page(s) that exported. Continue?';
+                    if (!confirm(skippedSummary)) {
+                        throw new Error('Aborted by operator after seeing skipped pages.');
+                    }
                 }
 
                 // Write Firestore manifest
