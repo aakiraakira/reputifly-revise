@@ -780,6 +780,11 @@
             validateProfile(data);
             profile = data;
             showProfileCard(data);
+            // Register the profile immediately on import (Stage 1) so the
+            // createRevisionLink Cloud Function / /revision-v3 can find it even
+            // for template-driven sites whose pages can't be listed/built
+            // client-side. Self-guarding + idempotent; never blocks onboarding.
+            await mirrorProfileToFirestore(data);
             await fetchPages();
         }
 
@@ -803,6 +808,40 @@
             feather.replace();
         }
 
+        // Additive: register the profile to agentic_profiles/{projectKey} so the
+        // createRevisionLink Cloud Function (and /revision-v3) can look it up by
+        // project key. Self-guarding — must never break onboarding or the legacy
+        // link-generation path. Called at Stage 1 (on import) so template-driven
+        // sites that can't list/build pages client-side still register, and again
+        // at link generation (idempotent merge:true).
+        async function mirrorProfileToFirestore(profile) {
+            try {
+                const projectKey = (function (siteUrl) {
+                    let raw = String(siteUrl || '').trim().toLowerCase();
+                    try {
+                        const u = new URL(raw.startsWith('http') ? raw : 'https://' + raw);
+                        raw = u.hostname;
+                    } catch (e) { /* not a URL */ }
+                    if (raw.startsWith('www.')) raw = raw.slice(4);
+                    return raw.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+                })(profile.site_url);
+                if (!projectKey) return;
+                const profileRef = window.fb.doc(window.db, 'agentic_profiles', projectKey);
+                await window.fb.setDoc(profileRef, {
+                    project_key: projectKey,
+                    site_url: profile.site_url || null,
+                    api_base: profile.api_base || null,
+                    agent_key: (profile.authentication && profile.authentication.agent_key) || null,
+                    plugin_version: profile.plugin_version || null,
+                    source_dump_path: (profile.endpoint_index && profile.endpoint_index.read && profile.endpoint_index.read.source_dump) || '/source-dump',
+                    updated_at: window.fb.serverTimestamp(),
+                    updated_by: window.auth.currentUser ? window.auth.currentUser.email : 'unknown'
+                }, { merge: true });
+            } catch (mirrorErr) {
+                console.warn('[generator] agentic_profiles mirror failed (non-fatal):', mirrorErr);
+            }
+        }
+
         // --------------------------------------------------
         // STAGE 2: FETCH + PICK PAGES
         // --------------------------------------------------
@@ -816,15 +855,33 @@
             try {
                 const epDesc = profile.endpoint_index.read.source_dump;
                 const epPath = epDesc.split(' ')[0];
-                const url = profile.api_base + epPath + "?scope=managed&include_post_content=false";
+                // scope=all so template-driven sites (managed:false, served via
+                // template slots) appear, not just per-page deployments. No
+                // include_rendered here — it would force a slow ~2.5MB/20s render
+                // of every page; rendered HTML is fetched lazily in generateLink
+                // only for the pages actually selected.
+                const url = profile.api_base + epPath + "?scope=all&include_post_content=false";
                 const res = await fetch(url, {
                     headers: { 'Authorization': 'Bearer ' + profile.authentication.agent_key }
                 });
                 if (!res.ok) throw new Error("HTTP " + res.status + " — check CORS / plugin version");
                 const data = await res.json();
-                // Only standard pages are editable - skip CPTs (portfolio, etc) which render via templates
+                // Keep standard pages (post_type 'page') AND any other published
+                // page that has a usable editor surface: source files (per-page
+                // deployment) or template-rendered (managed:false → live HTML
+                // fetched at generation time). Nothing that showed before can
+                // disappear (the post_type==='page' clause is preserved). Each
+                // page is tagged source_kind for generateLink + the editor.
                 allPages = (data.pages || [])
-                    .filter(p => p.post_type === 'page')
+                    .filter(p => p && p.slug
+                        && (p.status === undefined || p.status === 'publish') && !p.trashed
+                        && (p.post_type === 'page'
+                            || p.managed === false
+                            || (p.source && Array.isArray(p.source.files) && p.source.files.length > 0)))
+                    .map(p => {
+                        const hasFiles = !!(p.source && Array.isArray(p.source.files) && p.source.files.length > 0);
+                        return Object.assign({}, p, { source_kind: hasFiles ? 'deployment' : (p.managed === false ? 'rendered' : 'deployment') });
+                    })
                     .sort((a, b) => (a.slug || '').localeCompare(b.slug || ''));
                 // Auto-select every page by default; user unchecks what they don't want
                 selectedIds = new Set(allPages.map(p => p.page_id));
@@ -946,7 +1003,44 @@
             status.classList.remove('hidden');
             try {
                 const token = randomToken(12);
-                const pickedPages = allPages.filter(p => selectedIds.has(p.page_id));
+                const pickedRaw = allPages.filter(p => selectedIds.has(p.page_id));
+                // Dedupe by slug (first-wins): scope=all can surface multiple post
+                // types sharing a slug; without this two pages would overwrite each
+                // other at revision-edit-html/{token}/{slug}.html.
+                const _seenSlugs = new Set();
+                const pickedPages = pickedRaw.filter(p => {
+                    if (_seenSlugs.has(p.slug)) { console.warn('[generator] skipping duplicate slug to avoid Storage collision:', p.slug); return false; }
+                    _seenSlugs.add(p.slug);
+                    return true;
+                });
+
+                // Template-driven (source_kind 'rendered') pages have no client-
+                // reachable HTML: source.files is empty, /deployments/{id}/
+                // rendered-html 404s, and the browser can't fetch the live page
+                // cross-origin (CORS). So if any picked page is 'rendered', pull the
+                // live HTML once via source-dump?include_rendered=true (one heavier
+                // call, only when needed) and index it by page_id.
+                let renderedMap = null;
+                if (pickedPages.some(p => p.source_kind === 'rendered')) {
+                    try {
+                        status.innerText = 'Fetching rendered HTML for template pages…';
+                        const epDesc = profile.endpoint_index.read.source_dump;
+                        const epPath = epDesc.split(' ')[0];
+                        const rUrl = profile.api_base + epPath + '?scope=all&include_rendered=true';
+                        const rRes = await fetch(rUrl, { headers: { 'Authorization': 'Bearer ' + profile.authentication.agent_key } });
+                        if (rRes.ok) {
+                            const rData = await rRes.json();
+                            renderedMap = {};
+                            for (const rp of (rData.pages || [])) {
+                                if (rp && rp.page_id != null && typeof rp.rendered_html === 'string' && rp.rendered_html.length > 0) {
+                                    renderedMap[rp.page_id] = rp.rendered_html;
+                                }
+                            }
+                        }
+                    } catch (rErr) {
+                        console.warn('[generator] include_rendered fetch failed (will fall back per-page):', rErr);
+                    }
+                }
 
                 // Upload each page's source HTML to Storage. Uses cascading
                 // lookup (findPageHtmlFile) so this works across every RSPD plugin
@@ -966,6 +1060,11 @@
 
                     const f = findPageHtmlFile(p);
                     let html = f ? f.content : '';
+
+                    // Template-rendered page: use the live HTML pulled above.
+                    if (!html && renderedMap && renderedMap[p.page_id]) {
+                        html = renderedMap[p.page_id];
+                    }
 
                     // Last resort: live-fetch via deployment_rendered if the
                     // source.files[] lookup missed everything (sites where the
@@ -1007,6 +1106,7 @@
                         slug: p.slug,
                         title: p.title,
                         url: p.url,
+                        source_kind: p.source_kind || 'deployment',
                         storage_path: storagePath,
                         download_url: downloadUrl,
                         size: html.length
@@ -1050,35 +1150,10 @@
                     last_opened_at: null
                 });
 
-                // Additive: mirror the profile to agentic_profiles/{projectKey} so the
-                // createRevisionLink Cloud Function can look it up by project key.
-                // Wrapped in try/catch — must never break the legacy link-generation path.
-                try {
-                    const projectKey = (function (siteUrl) {
-                        let raw = String(siteUrl || '').trim().toLowerCase();
-                        try {
-                            const u = new URL(raw.startsWith('http') ? raw : 'https://' + raw);
-                            raw = u.hostname;
-                        } catch (e) { /* not a URL */ }
-                        if (raw.startsWith('www.')) raw = raw.slice(4);
-                        return raw.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-                    })(profile.site_url);
-                    if (projectKey) {
-                        const profileRef = window.fb.doc(window.db, 'agentic_profiles', projectKey);
-                        await window.fb.setDoc(profileRef, {
-                            project_key: projectKey,
-                            site_url: profile.site_url || null,
-                            api_base: profile.api_base || null,
-                            agent_key: (profile.authentication && profile.authentication.agent_key) || null,
-                            plugin_version: profile.plugin_version || null,
-                            source_dump_path: (profile.endpoint_index && profile.endpoint_index.read && profile.endpoint_index.read.source_dump) || '/source-dump',
-                            updated_at: window.fb.serverTimestamp(),
-                            updated_by: window.auth.currentUser ? window.auth.currentUser.email : 'unknown'
-                        }, { merge: true });
-                    }
-                } catch (mirrorErr) {
-                    console.warn('[generator] agentic_profiles mirror failed (non-fatal):', mirrorErr);
-                }
+                // Register/refresh the profile in agentic_profiles (idempotent
+                // merge). Also done at Stage 1 on import; repeated here so links
+                // generated for already-imported projects keep the doc fresh.
+                await mirrorProfileToFirestore(profile);
 
                 // Build the link
                 const base = (window.location.origin + '/');
