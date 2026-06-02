@@ -1115,6 +1115,17 @@
                         continue;
                     }
 
+                    // Skip redirect stubs (tiny meta-refresh / location.replace pages,
+                    // e.g. a CPT single view that bounces to its archive) — no editable
+                    // content, and they'd navigate the editor preview off-site.
+                    if (html.replace(/\s+/g, '').length < 4000
+                        && (/<meta\b[^>]*http-equiv\s*=\s*["']?\s*refresh/i.test(html)
+                            || /\blocation\s*\.\s*(?:replace|assign)\s*\(/i.test(html))) {
+                        skippedPages.push(p.slug);
+                        status.innerText = `Skipped ${p.slug} — redirect (no content)`;
+                        continue;
+                    }
+
                     const storagePath = `revision-edit-html/${token}/${p.slug}.html`;
                     const storageRef = window.fb.ref(window.storage, storagePath);
                     await window.fb.uploadString(storageRef, html, 'raw', { contentType: 'text/html' });

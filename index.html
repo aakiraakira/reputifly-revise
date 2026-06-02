@@ -4206,6 +4206,43 @@
 
         function loadContentIntoFrame(htmlContent) {
             const frame = document.getElementById('editorFrame');
+
+            // --- Editor preview must NEVER navigate to the live site ---
+            // Some captured pages are redirect stubs (e.g. a CPT single view that
+            // bounces to its archive) or carry framebust/redirect markup. With the
+            // <base href> injected below pointing at the live origin, a <meta
+            // refresh> or a location.replace() would navigate the iframe to the
+            // live site, which refuses framing → the browser shows "refused to
+            // connect" (and breaks first-load). Neutralize all such navigation:
+            try {
+                const original = String(htmlContent || '');
+                const hasRedirect = /<meta\b[^>]*http-equiv\s*=\s*["']?\s*refresh/i.test(original)
+                    || /\blocation\s*\.\s*(?:replace|assign)\s*\(/i.test(original);
+                const isStub = hasRedirect && original.replace(/\s+/g, '').length < 4000;
+                if (isStub) {
+                    // Pure redirect / no editable content → clean placeholder instead
+                    // of letting the stub bounce the iframe off-site.
+                    htmlContent = '<!doctype html><html><head><meta charset="utf-8">'
+                        + '<style>html,body{margin:0;height:100%}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;'
+                        + 'display:flex;align-items:center;justify-content:center;background:#fafafa;color:#6b7280;text-align:center}'
+                        + '.box{max-width:460px;padding:40px}.box h2{margin:0 0 10px;font-size:18px;color:#374151}.box p{margin:0;font-size:14px;line-height:1.5}</style>'
+                        + '</head><body><div class="box"><h2>No editable content on this page</h2>'
+                        + '<p>This page redirects to another URL on the live site, so there is nothing to edit here. You can safely skip it.</p></div></body></html>';
+                } else {
+                    // Real page: strip <meta refresh> (never useful in preview) and
+                    // neutralize SMALL inline scripts that navigate the browser (a
+                    // stray framebuster), while leaving large content/layout bundles
+                    // untouched so the page still renders exactly as before.
+                    htmlContent = original
+                        .replace(/<meta\b[^>]*http-equiv\s*=\s*["']?\s*refresh\b[^>]*>/gi, '')
+                        .replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gi, function (full, body) {
+                            return (body.length < 800 && /\blocation\s*\.\s*(?:replace|assign|reload)\s*\(|\blocation\s*\.\s*href\s*=|\b(?:window|top|parent|self)\s*\.\s*location\s*=/i.test(body))
+                                ? '<!-- reputifly: redirect script neutralized for preview -->'
+                                : full;
+                        });
+                }
+            } catch (e) { /* sanitization is best-effort; never block rendering */ }
+
             // Inject <base href> so relative URLs inside the page resolve correctly.
             // Without this, iframe.srcdoc uses about:srcdoc as the document origin
             // and any <img src="/wp-content/...">, background-image: url(/foo),
