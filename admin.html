@@ -1004,15 +1004,34 @@
             try {
                 const token = randomToken(12);
                 const pickedRaw = allPages.filter(p => selectedIds.has(p.page_id));
-                // Dedupe by slug (first-wins): scope=all can surface multiple post
-                // types sharing a slug; without this two pages would overwrite each
-                // other at revision-edit-html/{token}/{slug}.html.
+                // Collapse same-slug collisions to ONE page each. scope=all can
+                // surface multiple post types sharing a slug; without this they'd
+                // overwrite each other at revision-edit-html/{token}/{slug}.html.
+                // Survivor is deterministic: prefer 'deployment' (round-trippable)
+                // over 'rendered', then lowest page_id — not list order. Order is
+                // preserved (first occurrence), and the operator is warned visibly.
+                const _bestBySlug = new Map();
+                const _slugCounts = new Map();
+                for (const p of pickedRaw) {
+                    _slugCounts.set(p.slug, (_slugCounts.get(p.slug) || 0) + 1);
+                    const cur = _bestBySlug.get(p.slug);
+                    const pIsDep = p.source_kind === 'deployment';
+                    const curIsDep = cur && cur.source_kind === 'deployment';
+                    if (!cur || (pIsDep && !curIsDep) || (pIsDep === curIsDep && (p.page_id || 0) < (cur.page_id || 0))) {
+                        _bestBySlug.set(p.slug, p);
+                    }
+                }
                 const _seenSlugs = new Set();
-                const pickedPages = pickedRaw.filter(p => {
-                    if (_seenSlugs.has(p.slug)) { console.warn('[generator] skipping duplicate slug to avoid Storage collision:', p.slug); return false; }
+                const pickedPages = [];
+                for (const p of pickedRaw) {
+                    if (_seenSlugs.has(p.slug)) continue;
                     _seenSlugs.add(p.slug);
-                    return true;
-                });
+                    pickedPages.push(_bestBySlug.get(p.slug));
+                }
+                const _collided = [..._slugCounts].filter(([, n]) => n > 1).map(([s]) => s);
+                if (_collided.length) {
+                    toast('Duplicate slug(s) collapsed to one page each: ' + _collided.join(', '), 'err');
+                }
 
                 // Template-driven (source_kind 'rendered') pages have no client-
                 // reachable HTML: source.files is empty, /deployments/{id}/
