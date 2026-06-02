@@ -1154,13 +1154,14 @@
                         : 'Pages list was empty.'));
                 }
                 if (skippedPages.length > 0) {
-                    // Allow shipping the partial link so the client still gets
-                    // SOMETHING, but warn the operator up-front so they can
-                    // decide whether to regenerate.
-                    const skippedSummary = skippedPages.length + ' page(s) skipped (no HTML available): ' + skippedPages.join(', ') + '\n\nThe link will only include the ' + manifestPages.length + ' page(s) that exported. Continue?';
-                    if (!confirm(skippedSummary)) {
-                        throw new Error('Aborted by operator after seeing skipped pages.');
-                    }
+                    // Skipped pages are redirect stubs / pages with no editable HTML
+                    // and are intentionally excluded — the link still ships with the
+                    // working pages. Do NOT gate on confirm(): browsers SUPPRESS
+                    // confirm() on background / non-active tabs (it returns false),
+                    // which silently aborted link generation ("Aborted by operator
+                    // after seeing skipped pages"). Inform via a toast instead.
+                    toast(skippedPages.length + ' page(s) skipped (no editable content): ' + skippedPages.join(', ') + ' — link includes the ' + manifestPages.length + ' working page(s).', 'warn');
+                    console.warn('[generator] skipped pages (no editable content):', skippedPages);
                 }
 
                 // Write Firestore manifest
